@@ -1,0 +1,8 @@
+n=16 win=10 loss=5 draw=1 meanScore=0.636 hitRate=0.63 launched/match=4.6 winTime=497s alive=2.38 oppAlive=2.06 reasons={'ELIMINATION': 15, 'TIMEUP': 1} timeouts=0 errors=0
+total wall 604s
+n=16 win=13 loss=3 draw=0 meanScore=0.812 hitRate=0.91 launched/match=4.8 winTime=437s alive=3.19 oppAlive=0.69 reasons={'ELIMINATION': 16} timeouts=0 errors=0
+total wall 411s
+n=16 win=6 loss=9 draw=1 meanScore=0.417 hitRate=0.71 launched/match=4.2 winTime=447s alive=1.69 oppAlive=2.06 reasons={'ELIMINATION': 15, 'TIMEUP': 1} timeouts=0 errors=0
+total wall 471s
+n=16 win=16 loss=0 draw=0 meanScore=0.944 hitRate=0.81 launched/match=1.7 winTime=487s alive=4.44 oppAlive=3.75 reasons={'ELIMINATION': 16} timeouts=0 errors=0
+total wall 485s

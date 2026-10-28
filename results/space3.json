@@ -1,0 +1,7 @@
+{"attack_alt": [13000.0, 15000.0], "cruise_alt": [12500.0, 14500.0],
+ "pk_thr_escort": [0.5, 0.75], "escort_max_dist": [75000.0, 95000.0], "k_escort": [0.9, 1.4],
+ "engage_radius": [0.0, 25000.0], "n_interceptors": [1, 2, 2, 3], "inbound_deg": [25.0, 50.0],
+ "vt_k": [0.3, 0.55], "vt_react_dist": [15000.0, 30000.0], "vt_speed_margin": [20.0, 100.0],
+ "pk_thr_fighter": [0.5, 0.8], "k_fighter": [0.35, 0.7], "fighter_max_dist": [38000.0, 55000.0],
+ "max_msl_fighter": [1, 2], "defend_radius": [50000.0, 100000.0], "shot_range_plan": [40000.0, 80000.0],
+ "crank_max_deg": [40.0, 60.0], "mws_hold": [3.0, 8.0], "drag_alt": [7000.0, 12000.0]}

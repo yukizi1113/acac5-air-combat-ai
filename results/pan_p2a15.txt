@@ -1,0 +1,2 @@
+n=16 win=10 loss=6 draw=0 meanScore=0.587 hitRate=0.58 launched/match=4.6 winTime=544s alive=1.94 oppAlive=2.25 reasons={'ELIMINATION': 16} timeouts=0 errors=0
+total wall 618s

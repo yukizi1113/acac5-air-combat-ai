@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+simulator_dist/
+results/*.jsonl
+logs/
+.venv/

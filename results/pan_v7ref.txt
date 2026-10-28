@@ -1,0 +1,7 @@
+skip v7
+n=16 win=5 loss=10 draw=1 meanScore=0.377 hitRate=0.81 launched/match=3.1 winTime=485s alive=2.88 oppAlive=2.38 reasons={'ELIMINATION': 15, 'TIMEUP': 1} timeouts=0 errors=0
+total wall 687s
+n=16 win=15 loss=1 draw=0 meanScore=0.928 hitRate=0.97 launched/match=5.1 winTime=440s alive=4.94 oppAlive=0.06 reasons={'ELIMINATION': 16} timeouts=0 errors=0
+total wall 390s
+n=16 win=15 loss=1 draw=0 meanScore=0.866 hitRate=0.63 launched/match=2.1 winTime=596s alive=3.94 oppAlive=3.88 reasons={'ELIMINATION': 16} timeouts=0 errors=0
+total wall 707s
