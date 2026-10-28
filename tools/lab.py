@@ -25,6 +25,18 @@ def scenario(rng, evasions, supports):
         init_r.append({'pos': [N, -D / 2, -alt_s], 'vel': rng.uniform(260, 450), 'heading': 90.0 + rng.uniform(-15, 15)})
         init_b.append({'pos': [N + dN, D / 2, -alt_t], 'vel': rng.uniform(260, 450), 'heading': h_t % 360})
         E = str(rng.choice(evasions)); S = str(rng.choice(supports))
+        if os.environ.get('LAB_LONG'):
+            # head-on long-range shot: target holds course (no knowledge of the shot) or evades on MWS only
+            h_t = 270.0 + rng.uniform(-10, 10)
+            init_b[-1]['heading'] = h_t % 360
+            D = float(rng.uniform(40000, 85000)); init_b[-1]['pos'][1] = D / 2; init_r[-1]['pos'][1] = -D / 2
+            alt_s = float(rng.uniform(10000, 14000)); alt_t = float(rng.uniform(8000, 14000))
+            init_r[-1]['pos'][2] = -alt_s; init_b[-1]['pos'][2] = -alt_t
+            init_r[-1]['vel'] = float(rng.uniform(450, 560)); init_b[-1]['vel'] = float(rng.uniform(420, 560))
+            E = str(rng.choice(['none', 'drag_level']))
+            sh.append({'alt': alt_s, 'S': 'support', 'E_tgt': E, 't_fire': 2.0})
+            tg.append({'alt': alt_t, 'E': E, 'heading_abs': h_t % 360, 'thr': 1.0, 'hold': 999.0})
+            continue
         if os.environ.get('LAB_COLD'):
             # head-on duel geometry, target turns cold at a random time after the (fixed) earliest launch time
             h_t = 270.0 + rng.uniform(-10, 10)

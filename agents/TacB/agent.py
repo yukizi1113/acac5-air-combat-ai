@@ -184,6 +184,7 @@ class TacAgent(Agent):
             'post_cold_hot_only': g('post_cold_hot_only', True),
             'hot_pk': g('hot_pk', -1.0),
             'hot_dist': g('hot_dist', 45000.0),
+            'hot_rn': g('hot_rn', 9.0),              # long head-on shots: also bound the normalised range
             'hot_deg': g('hot_deg', 30.0),
             'raid_shot': g('raid_shot', False),
             'raid_rn': g('raid_rn', 0.5),
@@ -891,7 +892,8 @@ class TacAgent(Agent):
                 if p >= P['tc_force_pk']:
                     cands.append((p + 0.75, e, 'fighter', x, p))
                     continue
-            if x is not None and P['hot_pk'] >= 0 and x['d'] <= P['hot_dist'] and x['aspect'] < radians(P['hot_deg']):
+            if x is not None and P['hot_pk'] >= 0 and x['d'] <= P['hot_dist'] and x['aspect'] < radians(P['hot_deg']) \
+                    and x['rn'] <= P['hot_rn']:
                 p = self.pk(x)
                 if p >= P['hot_pk']:
                     cands.append((p + 0.25, e, 'fighter', x, p))
