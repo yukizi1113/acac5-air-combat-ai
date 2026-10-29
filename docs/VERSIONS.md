@@ -1,6 +1,6 @@
 # 提出物の版と実戦スコア
 
-全提出物は `args.json` の `overrides` だけが異なります（コードは各時点の TacB 凍結版）。public スコアは 2026-10-28 時点です。
+全提出物は `args.json` の `overrides` だけが異なります（コードは各時点の TacB 凍結版）。public スコアは 2026-10-30 時点です。
 
 共通の基準 **P2** = `{"attack_alt":13500,"cruise_alt":13000,"escort_max_dist":90000,"k_escort":1.2,"pk_thr_escort":0.55,"race_tte":99999,"engage_radius":12000}`
 
@@ -11,13 +11,14 @@
 | acac5_v9_p2.zip | snap_v9d | P2 | **1827.2** | 最良 |
 | acac5_v9c_pk.zip | snap_v9h | v9b と同じ＋Pk モデル再学習 | 1739.1 | |
 | acac5_v9c_adapt.zip | snap_v9k | v9b ＋ `"adapt_alt":true` | 1574.2 | 初期格付けのみ |
-| acac5_v10_loft.zip | snap_v9m | P2 ＋ `"loft_alt":15500` | 1815.2 | |
+| acac5_v10_loft.zip | snap_v9m | P2 ＋ `"loft_alt":15500` | 1815.2 | 最高点 |
 | acac5_v10_loft_raid.zip | snap_v9m | P2 ＋ `"loft_alt":15500,"raid_shot":true,"defend_ignore_vt":true` | 1744.0 | |
 | acac5_v11_rush.zip | snap_v10a | P2 ＋ `"attack_ignore_vt":true` | 1754.4 | |
 | acac5_v11_rush3.zip | snap_v10a | rush ＋ `"n_interceptors":1` | 1706.4 | |
-| acac5_v12_tc.zip | snap_v10e | P2 ＋ `"tc_hold":6,"tc_fire_first":true` | 1783.4 | |
-| acac5_v12_tcx.zip | snap_v10e | tc ＋ `"tc_exempt_attack":true` | 1740.5 | |
-| acac5_v13_lr.zip | snap_v13a | tc ＋ `"hot_pk":0.0,"hot_dist":65000,"hot_deg":35,"hot_rn":0.3` | 未採点 | 実戦ログ解析に基づく |
+| acac5_v12_tc.zip | snap_v10e | P2 ＋ `"tc_hold":6,"tc_fire_first":true` | 1756.6 | |
+| acac5_v12_tcx.zip | snap_v10e | tc ＋ `"tc_exempt_attack":true` | 1752.1 | |
+| acac5_v13_lr.zip | snap_v13a | tc ＋ `"hot_pk":0.0,"hot_dist":65000,"hot_deg":35,"hot_rn":0.3` | 1719.1 | 交換比は最良、すり抜け負けが残る |
+| acac5_v14_gk.zip | snap_v14a | v13_lr ＋ `"gk_fixed":true,"cap_legs":true,"cap_leg":15000` | 未採点 | 固定の守備機 |
 
 ## コード版の系譜（agents/snap_*）
 
@@ -34,4 +35,5 @@
 | v10a | 攻撃役の仮想脅威無視（attack_ignore_vt） |
 | v10e | 脅威時計（tc_*）＋先撃ち |
 | v13a | IRST 方位の順序不変化、正対遠距離射撃の rn 上限（hot_rn） |
+| v14a | 固定の守備機（gk_fixed：護衛機の前方に常駐） |
 | TacB（最新） | v10e ＋ IRST 方位リストの順序不変化（暫定ルール2対応）、すり抜け対策（leak_shot、既定オフ） |

@@ -200,6 +200,12 @@ class TacAgent(Agent):
             'defend_radius': g('defend_radius', 80000.0),
             'n_defenders_max': g('n_defenders_max', 1),
             'n_goalkeepers': g('n_goalkeepers', 0),
+            # fixed goalkeeper: one fighter (the slowest) stays ahead of our escort for the whole match and only
+            # engages enemies that come within gk_leash of the escort (independent of the interceptor assignment)
+            'gk_fixed': g('gk_fixed', False),
+            'gk_dx': g('gk_dx', 25000.0),
+            'gk_leash': g('gk_leash', 90000.0),
+            'gk_pick': g('gk_pick', 'slow'),
             'gk_x': g('gk_x', -70000.0),
             'cap_legs': g('cap_legs', False),
             'cap_leg': g('cap_leg', 12000.0),
@@ -547,6 +553,23 @@ class TacAgent(Agent):
             for f in alive:
                 if f['name'] in self.strikers:
                     opts[f['name']] = OPT_ATTACK; tg[f['name']] = None; used.add(f['name'])
+        self.gk_names = set()
+        if P['gk_fixed'] and self.myE is not None:
+            free = [f for f in alive if f['name'] not in used]
+            if len(free) >= 2:
+                prev = [f for f in free if f['name'] == getattr(self, '_gk_last', None)]
+                if prev:
+                    gk = prev[0]
+                elif P['gk_pick'] == 'slow':
+                    gk = min(free, key=lambda f: f['vmaxs'] + 0.02 * f['rem'])
+                else:
+                    gk = min(free, key=lambda f: f['pos'][0])
+                self._gk_last = gk['name']
+                E0g = self.myE['pos'][:2]
+                thr = [e for e in enemies if norm(e.pos[:2] - E0g) < P['gk_leash'] and self.now - e.t < 20]
+                opts[gk['name']] = OPT_DEFEND
+                tg[gk['name']] = min(thr, key=lambda e: norm(e.pos[:2] - E0g)).uid if thr else None
+                used.add(gk['name']); self.gk_names.add(gk['name'])
         if self.myE is not None:
             E0 = self.myE['pos']
             raiders = []
@@ -753,6 +776,8 @@ class TacAgent(Agent):
         base = self.myE['pos'] if self.myE is not None else np.array([-120000.0, 0, -10000])
         cx = self.P['turtle_cap_x'] if self.now < self.P['turtle_t'] else self.P['gk_x']
         cap = np.array([cx, base[1] * 0.7, 0.0])
+        if f['name'] in getattr(self, 'gk_names', ()):
+            cap = np.array([base[0] + self.P['gk_dx'], base[1], 0.0])
         if self.P['cap_legs']:
             # east-west legs through the CAP point: the radar looks toward the enemy on the eastbound leg
             dy = cap[1] - f['pos'][1]
