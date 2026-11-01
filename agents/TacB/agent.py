@@ -206,6 +206,9 @@ class TacAgent(Agent):
             'gk_dx': g('gk_dx', 25000.0),
             'gk_leash': g('gk_leash', 90000.0),
             'gk_pick': g('gk_pick', 'slow'),
+            'gk_commit': g('gk_commit', False),     # goalkeeper ignores threat clock / virtual threats / drags (MWS only)
+            'gk_max_msl': g('gk_max_msl', 1),       # missiles in flight per target allowed for the goalkeeper
+            'gk_axis': g('gk_axis', False),         # put the goalkeeper on the line from our escort to the nearest threats
             'gk_x': g('gk_x', -70000.0),
             'cap_legs': g('cap_legs', False),
             'cap_leg': g('cap_leg', 12000.0),
@@ -778,6 +781,17 @@ class TacAgent(Agent):
         cap = np.array([cx, base[1] * 0.7, 0.0])
         if f['name'] in getattr(self, 'gk_names', ()):
             cap = np.array([base[0] + self.P['gk_dx'], base[1], 0.0])
+            if self.P['gk_axis']:
+                es = [e for e in self.fighters_e(30.0) if norm(e.pos[:2] - base[:2]) < 200000.0]
+                if es:
+                    w = [1.0 / max(20000.0, norm(e.pos[:2] - base[:2])) ** 2 for e in es]
+                    c = sum(wi * e.pos[:2] for wi, e in zip(w, es)) / sum(w)
+                    u = c - base[:2]
+                    if norm(u) > 1.0:
+                        u = u / norm(u)
+                        if u[0] < 0.2:          # never station behind (west of) the escort
+                            u[0] = 0.2; u = u / norm(u)
+                        cap = np.array([base[0] + self.P['gk_dx'] * u[0], base[1] + self.P['gk_dx'] * u[1], 0.0])
         if self.P['cap_legs']:
             # east-west legs through the CAP point: the radar looks toward the enemy on the eastbound leg
             dy = cap[1] - f['pos'][1]
@@ -894,7 +908,8 @@ class TacAgent(Agent):
                         cands.append((p + 1.0, E, 'escort', x, p))
         no_ftr = f['name'] in self.strikers and not P['striker_fighter_shots']
         for e in ([] if no_ftr else self.fighters_e(0.5)):
-            if e.track is None or len(self.msls_on(e.uid)) >= P['max_msl_fighter'] or self._pend_on(e.uid):
+            mx = P['gk_max_msl'] if f['name'] in getattr(self, 'gk_names', ()) else P['max_msl_fighter']
+            if e.track is None or len(self.msls_on(e.uid)) >= mx or self._pend_on(e.uid):
                 continue
             if self.off_bore(f, e.pos) > f['radarFOR'] - 0.1:
                 continue
@@ -1007,6 +1022,10 @@ class TacAgent(Agent):
         v[156] = self.n_launched
         v[157] = self.ee_pos[0] / 1e3
         v[158] = self.ee_pos[1] / 1e3
+        try:
+            v[159] = sum(1 for e in self.fighters_e(20.0) if self._inbound(e))   # enemies heading for our escort
+        except Exception:
+            pass
         return np.round(v, 2)
 
     def is_decision_tick(self):
@@ -1063,6 +1082,16 @@ class TacAgent(Agent):
                 vt0 = self._vthreat_for(f)
                 if vt0 is None or vt0['dist'] > 12000:
                     return B_SUPPORT, dm
+        if P['gk_commit'] and nm in getattr(self, 'gk_names', ()) and opt == OPT_DEFEND:
+            # the goalkeeper is the last line in front of our escort: a raider that gets past it ends the match, so
+            # it does not turn away from hypothetical or clock-based threats (only from a real missile warning)
+            self.drag_from.pop(nm, None)
+            self.__dict__.setdefault('_tcold', {}).pop(nm, None)
+            if f['rem'] <= 0 and not guided:
+                return B_NOAMMO, None
+            if guided:
+                return B_SUPPORT, guided[0]
+            return opt, otgt
         if P['tc_hold'] >= 0:
             r = self._threat_clock(f, opt, guided)
             if r is not None:

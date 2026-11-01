@@ -5,6 +5,9 @@ for f in sorted(glob.glob(D+'/*.txt')):
     base=os.path.basename(f)[:-4]; model=base[:-13]; stamp=base[-12:]
     if model=='acac5_v7_rule': continue
     d=json.load(open(f))
+    # file names swapped by the downloader on 2026-11-01 06:00: identify the model by its header rating
+    FIX={('acac5_v14_gk','202611010600'):'acac5_v9_p2',('acac5_v9_p2','202611010600'):'acac5_v14_gk'}
+    model=FIX.get((model,stamp),model)
     for k,m in enumerate(d[1:]):
         lg=m['detail'].get('logs') or {}
         o=lg.get('observations')

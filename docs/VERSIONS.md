@@ -1,6 +1,6 @@
 # 提出物の版と実戦スコア
 
-全提出物は `args.json` の `overrides` だけが異なります（コードは各時点の TacB 凍結版）。public スコアは 2026-10-30 時点です。
+全提出物は `args.json` の `overrides` だけが異なります（コードは各時点の TacB 凍結版）。public スコアは 2026-11-01 時点です。
 
 共通の基準 **P2** = `{"attack_alt":13500,"cruise_alt":13000,"escort_max_dist":90000,"k_escort":1.2,"pk_thr_escort":0.55,"race_tte":99999,"engage_radius":12000}`
 
@@ -18,7 +18,8 @@
 | acac5_v12_tc.zip | snap_v10e | P2 ＋ `"tc_hold":6,"tc_fire_first":true` | 1756.6 | |
 | acac5_v12_tcx.zip | snap_v10e | tc ＋ `"tc_exempt_attack":true` | 1752.1 | |
 | acac5_v13_lr.zip | snap_v13a | tc ＋ `"hot_pk":0.0,"hot_dist":65000,"hot_deg":35,"hot_rn":0.3` | 1719.1 | 交換比は最良、すり抜け負けが残る |
-| acac5_v14_gk.zip | snap_v14a | v13_lr ＋ `"gk_fixed":true,"cap_legs":true,"cap_leg":15000` | 未採点 | 固定の守備機 |
+| acac5_v14_gk.zip | snap_v14a | v13_lr ＋ `"gk_fixed":true,"cap_legs":true,"cap_leg":15000` | 1733.0 | 同じ期間の勝率 0.62（p2 は 0.40） |
+| acac5_v15_gkc.zip | snap_v15w | v14_gk ＋ `"gk_commit":true,"loft_alt":15500` | 未採点 | 守備機は MWS 以外で逃げない |
 
 ## コード版の系譜（agents/snap_*）
 
@@ -36,4 +37,5 @@
 | v10e | 脅威時計（tc_*）＋先撃ち |
 | v13a | IRST 方位の順序不変化、正対遠距離射撃の rn 上限（hot_rn） |
 | v14a | 固定の守備機（gk_fixed：護衛機の前方に常駐） |
+| v15w | gk_commit・gk_axis・gk_max_msl、ログ 159 番に接近中の敵の数 |
 | TacB（最新） | v10e ＋ IRST 方位リストの順序不変化（暫定ルール2対応）、すり抜け対策（leak_shot、既定オフ） |
