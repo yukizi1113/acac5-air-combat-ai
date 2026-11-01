@@ -13,6 +13,7 @@ Layers
                     (heuristic or learned model `pk_model`), de-conflicted per target.
 Team frame: x = towards the enemy, y = right, z = down, origin = battlefield centre.
 """
+import json
 import math
 import os
 import numpy as np
@@ -185,6 +186,9 @@ class TacAgent(Agent):
             'hot_pk': g('hot_pk', -1.0),
             'hot_dist': g('hot_dist', 45000.0),
             'hot_rn': g('hot_rn', 9.0),              # long head-on shots: also bound the normalised range
+            # field logs: shots at targets below ~5 km hit 0.79 inside 20 km but 0.28 at 40-70 km -> limit the range
+            'hot_low_alt': g('hot_low_alt', -1.0),
+            'hot_low_dist': g('hot_low_dist', 28000.0),
             'hot_deg': g('hot_deg', 30.0),
             'raid_shot': g('raid_shot', False),
             'raid_rn': g('raid_rn', 0.5),
@@ -209,6 +213,14 @@ class TacAgent(Agent):
             'gk_commit': g('gk_commit', False),     # goalkeeper ignores threat clock / virtual threats / drags (MWS only)
             'gk_max_msl': g('gk_max_msl', 1),       # missiles in flight per target allowed for the goalkeeper
             'gk_axis': g('gk_axis', False),         # put the goalkeeper on the line from our escort to the nearest threats
+            # strategy switch at arm_t (option-level decision): 0 keep, 1 two goalkeepers, 2 no goalkeeper,
+            # 3 all defend (turtle), 4 all-in race.  arm=-1: chosen by arm_policy (linear scores on opponent features)
+            'arm': g('arm', -1),
+            'arm_t': g('arm_t', 200.0),
+            'arm_policy': g('arm_policy', None),
+            # arm 5 (dynamic goalkeeper): after arm_t the goalkeeper exists only while an enemy fighter is within
+            # gk_recall of our escort (re-evaluated every decision tick); otherwise it joins the attack
+            'gk_recall': g('gk_recall', 120000.0),
             'gk_x': g('gk_x', -70000.0),
             'cap_legs': g('cap_legs', False),
             'cap_leg': g('cap_leg', 12000.0),
@@ -557,22 +569,35 @@ class TacAgent(Agent):
                 if f['name'] in self.strikers:
                     opts[f['name']] = OPT_ATTACK; tg[f['name']] = None; used.add(f['name'])
         self.gk_names = set()
-        if P['gk_fixed'] and self.myE is not None:
-            free = [f for f in alive if f['name'] not in used]
-            if len(free) >= 2:
-                prev = [f for f in free if f['name'] == getattr(self, '_gk_last', None)]
-                if prev:
-                    gk = prev[0]
-                elif P['gk_pick'] == 'slow':
+        arm = self._strategy_arm()
+        if arm == 3 and self.myE is not None:
+            return self._turtle(alive, enemies)
+        n_gk = (1 if P['gk_fixed'] else 0) if arm in (-1, 0) else {1: 2, 2: 0, 4: 0}.get(arm, 1)
+        if arm == 5 and self.myE is not None:
+            E0r = self.myE['pos'][:2]
+            n_gk = 1 if any(norm(e.pos[:2] - E0r) < P['gk_recall'] for e in enemies) else 0
+        if n_gk > 0 and self.myE is not None:
+            gk_list = [n for n in getattr(self, '_gk_list', []) if any(f['name'] == n and f['name'] not in used for f in alive)]
+            n_free = sum(1 for f in alive if f['name'] not in used)
+            n_gk = min(n_gk, n_free - 1)          # always keep at least one fighter going forward (as in v14/v15)
+            gk_list = gk_list[:max(0, n_gk)]
+            E0g = self.myE['pos'][:2]
+            while len(gk_list) < n_gk:
+                free = [f for f in alive if f['name'] not in used and f['name'] not in gk_list]
+                if len(free) < 2:
+                    break
+                if not gk_list and P['gk_pick'] == 'slow':
                     gk = min(free, key=lambda f: f['vmaxs'] + 0.02 * f['rem'])
                 else:
-                    gk = min(free, key=lambda f: f['pos'][0])
-                self._gk_last = gk['name']
-                E0g = self.myE['pos'][:2]
-                thr = [e for e in enemies if norm(e.pos[:2] - E0g) < P['gk_leash'] and self.now - e.t < 20]
-                opts[gk['name']] = OPT_DEFEND
-                tg[gk['name']] = min(thr, key=lambda e: norm(e.pos[:2] - E0g)).uid if thr else None
-                used.add(gk['name']); self.gk_names.add(gk['name'])
+                    gk = min(free, key=lambda f: norm(f['pos'][:2] - E0g))
+                gk_list.append(gk['name'])
+            self._gk_list = gk_list
+            thr = sorted([e for e in enemies if norm(e.pos[:2] - E0g) < P['gk_leash'] and self.now - e.t < 20],
+                         key=lambda e: norm(e.pos[:2] - E0g))
+            for i, nm in enumerate(gk_list):
+                opts[nm] = OPT_DEFEND
+                tg[nm] = thr[min(i, len(thr) - 1)].uid if thr else None
+                used.add(nm); self.gk_names.add(nm)
         if self.myE is not None:
             E0 = self.myE['pos']
             raiders = []
@@ -632,6 +657,52 @@ class TacAgent(Agent):
                     opts[f['name']] = OPT_ATTACK
                 tg[f['name']] = None
         return opts, tg
+
+    def opp_features(self):
+        """Opponent-model features from our own sensors / datalink only (team frame, km)."""
+        es = self.fighters_e(20.0)
+        E0 = self.myE['pos'][:2] if self.myE is not None else np.array([-120000.0, 0.0])
+        n_in = sum(1 for e in es if self._inbound(e))
+        xs = [e.pos[0] / 1000.0 for e in es]
+        alts = [-e.pos[2] / 1000.0 for e in es]
+        Vs = [norm(e.vel) for e in es if norm(e.vel) > 50]
+        dmin = min([norm(e.pos[:2] - E0) / 1000.0 for e in es] or [300.0])
+        lost = sum(1 for f in self.F if not f['alive'])
+        return {'n_in': float(n_in), 'n_trk': float(len(es)), 'x_mean': float(np.mean(xs)) if xs else 100.0,
+                'x_min': float(min(xs)) if xs else 100.0, 'alt_med': float(np.median(alts)) if alts else 10.0,
+                'V_med': float(np.median(Vs)) if Vs else 500.0, 'd_esc_min': float(dmin),
+                'kills': float(self._n_kills()), 'lost': float(lost), 'max_in': float(getattr(self, '_max_in', 0))}
+
+    def _strategy_arm(self):
+        P = self.P
+        if self.now < P['arm_t']:
+            try:
+                self._max_in = max(getattr(self, '_max_in', 0), sum(1 for e in self.fighters_e(20.0) if self._inbound(e)))
+            except Exception:
+                pass
+            return -1
+        if getattr(self, '_arm', None) is None:
+            arm = int(P['arm'])
+            if arm < 0 and P['arm_policy']:
+                try:
+                    pol = P['arm_policy']; x = self.opp_features()
+                    xv = np.array([(x[k] - m) / sd for k, m, sd in zip(pol['feat'], pol['mu'], pol['sd'])])
+                    sc = [float(np.dot(w, xv) + b) for w, b in zip(pol['W'], pol['b'])]
+                    arm = int(pol['arms'][int(np.argmax(sc))])
+                except Exception:
+                    arm = 0
+            self._arm = arm
+            self._arm_feat = self.opp_features()
+            if arm == 4:
+                P['attack_ignore_vt'] = True; P['tc_exempt_attack'] = True
+            if os.environ.get('ARM_LOG'):
+                try:
+                    with open(os.environ['ARM_LOG'], 'a') as fo:
+                        fo.write(json.dumps({'match': os.environ.get('MATCH_ID', ''), 'team': self.own, 'arm': arm,
+                                             't': self.now, **self._arm_feat}) + '\n')
+                except Exception:
+                    pass
+        return self._arm
 
     def _inbound(self, e):
         if self.myE is None:
@@ -932,7 +1003,8 @@ class TacAgent(Agent):
                 if p >= P['tc_force_pk']:
                     cands.append((p + 0.75, e, 'fighter', x, p))
                     continue
-            if x is not None and P['hot_pk'] >= 0 and x['d'] <= P['hot_dist'] and x['aspect'] < radians(P['hot_deg']) \
+            hot_dmax = P['hot_low_dist'] if (P['hot_low_alt'] > 0 and -e.pos[2] < P['hot_low_alt']) else P['hot_dist']
+            if x is not None and P['hot_pk'] >= 0 and x['d'] <= hot_dmax and x['aspect'] < radians(P['hot_deg']) \
                     and x['rn'] <= P['hot_rn']:
                 p = self.pk(x)
                 if p >= P['hot_pk']:
