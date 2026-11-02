@@ -1,0 +1,3 @@
+{
+  "interval": {"unit": "time", "step": 1.0, "perceive": 1.0, "control": 1.0, "behave": 1.0}
+}

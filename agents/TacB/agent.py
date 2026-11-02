@@ -130,6 +130,12 @@ class TacAgent(Agent):
             'alt_hi': g('alt_hi', 14000.0),
             'alt_lo': g('alt_lo', 10500.0),
             'adapt_min_obs': g('adapt_min_obs', 5),
+            # altitude matching: start low and fast (10 km), then fly slightly above the observed enemy altitude,
+            # clipped to [alt_floor, alt_ceil] and re-estimated continuously from our radar tracks
+            'alt_match': g('alt_match', False),
+            'alt_margin': g('alt_margin', 500.0),
+            'alt_floor': g('alt_floor', 10000.0),
+            'alt_ceil': g('alt_ceil', 13500.0),
             'pk_thr_fighter': g('pk_thr_fighter', 0.65),
             'max_msl_escort': g('max_msl_escort', 1),
             'max_msl_fighter': g('max_msl_fighter', 1),
@@ -189,6 +195,9 @@ class TacAgent(Agent):
             # field logs: shots at targets below ~5 km hit 0.79 inside 20 km but 0.28 at 40-70 km -> limit the range
             'hot_low_alt': g('hot_low_alt', -1.0),
             'hot_low_dist': g('hot_low_dist', 28000.0),
+            # long head-on shots uphill (target above us by more than hot_up_dz) need the Pk model to agree
+            'hot_up_dz': g('hot_up_dz', 99999.0),
+            'hot_up_pk': g('hot_up_pk', 0.25),
             'hot_deg': g('hot_deg', 30.0),
             'raid_shot': g('raid_shot', False),
             'raid_rn': g('raid_rn', 0.5),
@@ -210,6 +219,11 @@ class TacAgent(Agent):
             'gk_dx': g('gk_dx', 25000.0),
             'gk_leash': g('gk_leash', 90000.0),
             'gk_pick': g('gk_pick', 'slow'),
+            'gk_alt': g('gk_alt', -1.0),             # goalkeeper CAP altitude (<0: cruise_alt)
+            # late game: a draw is only 0.5, so after gk_release_t the goalkeeper joins the attack while no enemy
+            # fighter is known within gk_release_dist of our escort
+            'gk_release_t': g('gk_release_t', 99999.0),
+            'gk_release_dist': g('gk_release_dist', 130000.0),
             'gk_commit': g('gk_commit', False),     # goalkeeper ignores threat clock / virtual threats / drags (MWS only)
             'gk_max_msl': g('gk_max_msl', 1),       # missiles in flight per target allowed for the goalkeeper
             'gk_axis': g('gk_axis', False),         # put the goalkeeper on the line from our escort to the nearest threats
@@ -573,6 +587,10 @@ class TacAgent(Agent):
         if arm == 3 and self.myE is not None:
             return self._turtle(alive, enemies)
         n_gk = (1 if P['gk_fixed'] else 0) if arm in (-1, 0) else {1: 2, 2: 0, 4: 0}.get(arm, 1)
+        if self.now >= P['gk_release_t'] and self.myE is not None:
+            E0q = self.myE['pos'][:2]
+            if not any(norm(e.pos[:2] - E0q) < P['gk_release_dist'] for e in self.fighters_e(60.0)):
+                n_gk = 0
         if arm == 5 and self.myE is not None:
             E0r = self.myE['pos'][:2]
             n_gk = 1 if any(norm(e.pos[:2] - E0r) < P['gk_recall'] for e in enemies) else 0
@@ -850,8 +868,11 @@ class TacAgent(Agent):
         base = self.myE['pos'] if self.myE is not None else np.array([-120000.0, 0, -10000])
         cx = self.P['turtle_cap_x'] if self.now < self.P['turtle_t'] else self.P['gk_x']
         cap = np.array([cx, base[1] * 0.7, 0.0])
+        calt = self.P['cruise_alt']
         if f['name'] in getattr(self, 'gk_names', ()):
             cap = np.array([base[0] + self.P['gk_dx'], base[1], 0.0])
+            if self.P['gk_alt'] > 0:
+                calt = self.P['gk_alt']
             if self.P['gk_axis']:
                 es = [e for e in self.fighters_e(30.0) if norm(e.pos[:2] - base[:2]) < 200000.0]
                 if es:
@@ -873,10 +894,10 @@ class TacAgent(Agent):
             else:
                 hd = 0.0 if abs(wrap(f['az'])) < math.pi / 2 else math.pi
             v = dir_from_az(hd) * 20000.0 + np.array([0.0, float(np.clip(dy, -15000, 15000)), 0.0])
-            return az_of(v), self.P['cruise_alt'], 'n', 0.85
+            return az_of(v), calt, 'n', 0.85
         if norm(cap[:2] - f['pos'][:2]) < 8000:
-            return wrap(f['az'] + 0.6), self.P['cruise_alt'], 'n', 0.8
-        return az_of(cap - f['pos']), self.P['cruise_alt'], 'n', 1.0
+            return wrap(f['az'] + 0.6), calt, 'n', 0.8
+        return az_of(cap - f['pos']), calt, 'n', 1.0
 
     def sk_drag(self, f, uid):
         e = self.enemies.get(uid) if uid else None
@@ -1007,7 +1028,8 @@ class TacAgent(Agent):
             if x is not None and P['hot_pk'] >= 0 and x['d'] <= hot_dmax and x['aspect'] < radians(P['hot_deg']) \
                     and x['rn'] <= P['hot_rn']:
                 p = self.pk(x)
-                if p >= P['hot_pk']:
+                thr_h = P['hot_up_pk'] if x.get('dz', 0.0) > P['hot_up_dz'] else P['hot_pk']
+                if p >= thr_h:
                     cands.append((p + 0.25, e, 'fighter', x, p))
                     continue
             if x is None or x['d'] > P['fighter_max_dist'] or x['rn'] > P['k_fighter']:
@@ -1394,6 +1416,15 @@ class TacAgent(Agent):
             if e.src == 'radar' and e.track is not None and norm(e.vel) > 200:
                 self._alt_obs.append(-e.pos[2])
         self._alt_obs = self._alt_obs[-400:]
+        if P['alt_match']:
+            if len(self._alt_obs) >= P['adapt_min_obs']:
+                ea = float(np.median(self._alt_obs[-120:]))
+                a = float(np.clip(ea + P['alt_margin'], P['alt_floor'], P['alt_ceil']))
+            else:
+                a = P['alt_floor']
+            self._alt_target = a
+            P['attack_alt'] = a; P['cruise_alt'] = a; P['striker_alt'] = a
+            return
         if len(self._alt_obs) >= P['adapt_min_obs']:
             ea = float(np.median(self._alt_obs[-120:]))
             hi = P['adapt_lo_band'] <= ea < P['adapt_thr']
@@ -1404,7 +1435,7 @@ class TacAgent(Agent):
 
     def _deploy_impl(self, action):
         P = self.P
-        if P['adapt_alt']:
+        if P['adapt_alt'] or P['alt_match']:
             self._adapt_altitude()
         self.ext_action = action
         if P.get('debug_raise_after', -1) >= 0 and self.tick > P['debug_raise_after']:
