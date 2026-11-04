@@ -1,6 +1,6 @@
 # 提出物の版と実戦スコア
 
-全提出物は `args.json` の `overrides` だけが異なります（コードは各時点の TacB 凍結版）。public スコアは 2026-11-02 時点です。
+全提出物は `args.json` の `overrides` だけが異なります（コードは各時点の TacB 凍結版）。public スコアは 2026-11-04 時点です。
 
 共通の基準 **P2** = `{"attack_alt":13500,"cruise_alt":13000,"escort_max_dist":90000,"k_escort":1.2,"pk_thr_escort":0.55,"race_tte":99999,"engage_radius":12000}`
 
@@ -19,9 +19,9 @@
 | acac5_v12_tcx.zip | snap_v10e | tc ＋ `"tc_exempt_attack":true` | 1752.1 | |
 | acac5_v13_lr.zip | snap_v13a | tc ＋ `"hot_pk":0.0,"hot_dist":65000,"hot_deg":35,"hot_rn":0.3` | 1719.1 | 交換比は最良、すり抜け負けが残る |
 | acac5_v14_gk.zip | snap_v14a | v13_lr ＋ `"gk_fixed":true,"cap_legs":true,"cap_leg":15000` | 1733.0 | 同じ期間の勝率 0.62（p2 は 0.40） |
-| acac5_v15_gkc.zip | snap_v15w | v14_gk ＋ `"gk_commit":true,"loft_alt":15500` | 1733.2 | 直近 27 試合で勝率 0.74 |
-| acac5_v16_low.zip | snap_v16c | v15_gkc ＋ `"hot_low_alt":5000,"hot_low_dist":28000` | 1741.5 | 低高度の目標への遠距離弾を制限（自前：低高度突撃型に 0.600→0.797、p2 は 0.689→0.688） |
-| acac5_v17_alt11.zip | snap_v17e | v16_low ＋ `"attack_alt":11000,"cruise_alt":11000,"hot_up_dz":500,"hot_up_pk":0.25,"gk_release_t":900` | 未採点 | 11 km 巡航（高速 10 km 型への対策）。v15・v16 との直接対戦で 30 勝 15 敗 |
+| acac5_v15_gkc.zip | snap_v15w | v14_gk ＋ `"gk_commit":true,"loft_alt":15500` | **1783.3** | 通算 40 勝 7 敗。全ログ 67 試合で勝率 0.72（最良） |
+| acac5_v16_low.zip | snap_v16c | v15_gkc ＋ `"hot_low_alt":5000,"hot_low_dist":28000` | 1770.3 | 低高度の目標への遠距離弾を制限（自前：低高度突撃型に 0.600→0.797、p2 は 0.689→0.688） |
+| acac5_v17_alt11.zip | snap_v17e | v16_low ＋ `"attack_alt":11000,"cruise_alt":11000,"hot_up_dz":500,"hot_up_pk":0.25,"gk_release_t":900` | 1760.7 | 11 km 巡航（高速 10 km 型への対策）。通算 16 勝 7 敗。同じ期間の勝率は v15 0.73 に対し 0.67（誤差内） |
 
 ## コード版の系譜（agents/snap_*）
 
