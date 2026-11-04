@@ -1,0 +1,6 @@
+{"tag": "det_v17_v15", "seed": 41000, "color": "Blue", "result": "loss", "score": 0.17142857142857149, "time": 589.0}
+{"tag": "det_v17_v15", "seed": 41000, "color": "Red", "result": "win", "score": 0.95, "time": 876.0}
+{"tag": "det_v17_v15", "seed": 41001, "color": "Blue", "result": "win", "score": 0.94, "time": 471.0}
+{"tag": "det_v17_v15", "seed": 41001, "color": "Red", "result": "loss", "score": 0.12857142857142867, "time": 814.0}
+{"tag": "det_v17_v15", "seed": 41002, "color": "Red", "result": "win", "score": 0.88, "time": 560.0}
+{"tag": "det_v17_v15", "seed": 41002, "color": "Blue", "result": "win", "score": 0.8999999999999999, "time": 581.0}
