@@ -63,6 +63,8 @@ def main():
     ap.add_argument('--workers', type=int, default=0, help='0 = usable CPUs (cgroup quota)')
     ap.add_argument('--budget-min', type=float, default=30.0)
     ap.add_argument('--maxtasks', type=int, default=1)
+    ap.add_argument('--start', default='spawn', choices=['spawn', 'forkserver'],
+                    help='forkserver: simulator imported once, each match still gets a fresh process')
     ap.add_argument('--shard', default='0/1', help='i/k: run every k-th job starting at i (one shard per node)')
     a = ap.parse_args()
     if a.workers <= 0:
@@ -81,7 +83,9 @@ def main():
     todo = [j for j in jobs if (j['tag'], j['seed'], j['color']) not in done]
     print(f'jobs {len(jobs)}, already done {len(jobs) - len(todo)}, to run {len(todo)}, workers {a.workers}', flush=True)
     t0 = time.time(); deadline = t0 + a.budget_min * 60
-    ctx = mp.get_context('spawn')
+    ctx = mp.get_context(a.start)
+    if a.start == 'forkserver':
+        ctx.set_forkserver_preload(['numpy', 'lightgbm', 'tools.utils', 'tools.fight_ext'])
     pool = ctx.Pool(a.workers, maxtasksperchild=a.maxtasks)
     pending = collections.deque(todo); running = []; n_done = 0
     with open(a.out, 'a') as fo:
