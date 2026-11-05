@@ -20,7 +20,30 @@ def _put(session, path, stage_dir):
         print('stage put failed (will retry):', ex)
 
 
+def claim_shard(session, stage, phase, k):
+    """Take the lowest shard of k that no node has claimed yet (claim files in {stage}/claims/{phase}/; no warehouse).
+    Start nodes one after another (wait until each prints its shard) so two nodes never pick the same one."""
+    d = f'/tmp/claims_{phase}'
+    os.makedirs(d, exist_ok=True)
+    try:
+        session.file.get(f'{stage}/claims/{phase}/', d)
+    except Exception as ex:
+        print('no claims yet', ex)
+    taken = {int(f.split('_')[1].split('.')[0]) for f in os.listdir(d) if f.startswith('shard_')}
+    free = [i for i in range(k) if i not in taken]
+    if not free:
+        raise SystemExit(f'all {k} shards of {phase} are claimed')
+    i = free[0]
+    p = f'{d}/shard_{i}.txt'
+    open(p, 'w').write(f'{os.uname().nodename} {time.ctime()}\n')
+    session.file.put(p, f'{stage}/claims/{phase}/', auto_compress=False, overwrite=True)
+    print(f'claimed shard {i}/{k}')
+    return f'{i}/{k}'
+
+
 def run(session, stage, phase, shard='0/1', budget_min=20, workers=0, put_every_min=5, poll_s=30):
+    if shard.startswith('auto'):
+        shard = claim_shard(session, stage, phase, int(shard.split('/')[1]))
     si = shard.replace('/', 'of')
     out = f'{ROOT}/out/{phase}_{si}.jsonl'
     log = f'{ROOT}/out/{phase}_{si}.log'

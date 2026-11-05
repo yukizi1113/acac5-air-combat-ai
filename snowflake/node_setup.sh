@@ -21,7 +21,7 @@ $VENV/bin/python -m pip install -q --no-index --find-links ../wheels \
   gymnasium==1.0.0 pygame pyopengl "setuptools<70" cloudpickle
 $VENV/bin/python -m pip install -q --no-index --no-deps --find-links ../wheels matchmaker rayutility
 $VENV/bin/python patch_noray.py
-PYLIB=$($PY -c 'import sysconfig;print(sysconfig.get_config_var("LIBDIR"))')
+PYLIB=$(dirname $(dirname $(readlink -f $PY)))/lib   # real location; sysconfig LIBDIR is the build-time path
 echo "export LD_LIBRARY_PATH=$PYLIB:\$LD_LIBRARY_PATH" > $VENV/ldpath.sh
 . $VENV/ldpath.sh
 $VENV/bin/python -c "import ASRCAISim1, r8_contest_models, lightgbm; print('simulator import OK')"

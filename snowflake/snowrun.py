@@ -11,6 +11,18 @@ Each line of the job file: {"tag", "me", "me_ov", "opp", "opp_ov", "seed", "colo
 import os, sys, json, time, argparse, multiprocessing as mp, collections
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
+# One match = one process = one core. Library thread pools (OpenMP in lightgbm/numpy) would otherwise start
+# nproc threads per match that spin-wait against each other (Snowflake CPU node: 25% sys time, matches 3x slower).
+# Spawned children inherit these.
+for _v in ('OMP_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'MKL_NUM_THREADS', 'NUMEXPR_NUM_THREADS'):
+    os.environ.setdefault(_v, '1')
+# Same BLAS kernel on every machine: OpenBLAS picks a kernel per CPU (local sandbox: Prescott, Snowflake Xeon 8375C:
+# SkylakeX) and the different rounding makes matches diverge. Forcing Prescott reproduces local results bit for bit
+# (verified on a Snowflake CPU node, det_v17_v15 seed 41000).
+# Cost: Prescott (SSE3) kernels make a Snowflake node ~1/3 slower (120/h instead of 180/h per CPU_X64_S node), so it is
+# opt-in. Without it every node is still deterministic run to run (threads=1), only not bit-equal to other CPUs.
+if os.environ.get('ACAC_EXACT_BLAS', '0') == '1':
+    os.environ.setdefault('OPENBLAS_CORETYPE', 'Prescott')
 sys.path.insert(0, ROOT)
 
 
