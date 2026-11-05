@@ -19,9 +19,9 @@ for _v in ('OMP_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'MKL_NUM_THREADS', 'NUMEXP
 # Same BLAS kernel on every machine: OpenBLAS picks a kernel per CPU (local sandbox: Prescott, Snowflake Xeon 8375C:
 # SkylakeX) and the different rounding makes matches diverge. Forcing Prescott reproduces local results bit for bit
 # (verified on a Snowflake CPU node, det_v17_v15 seed 41000).
-# Cost: Prescott (SSE3) kernels make a Snowflake node ~1/3 slower (120/h instead of 180/h per CPU_X64_S node), so it is
-# opt-in. Without it every node is still deterministic run to run (threads=1), only not bit-equal to other CPUs.
-if os.environ.get('ACAC_EXACT_BLAS', '0') == '1':
+# Measured cost: none that matters (Phase 2 on Snowflake ran ~175 matches/h per CPU_X64_S node with Prescott, same as
+# SkylakeX). Set ACAC_EXACT_BLAS=0 to let OpenBLAS pick its own kernel.
+if os.environ.get('ACAC_EXACT_BLAS', '1') == '1':
     os.environ.setdefault('OPENBLAS_CORETYPE', 'Prescott')
 sys.path.insert(0, ROOT)
 
